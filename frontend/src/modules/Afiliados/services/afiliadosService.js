@@ -1,106 +1,75 @@
-import { afiliadosMock } from '../datosMock';
-  
+const API_URL = 'http://localhost:3000/api';
+
 export const afiliadosService = {
-  getAfiliados: async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return {
-      success: true,
-      data: afiliadosMock
-    };
+  obtenerTodos: async (filtros = {}) => {
+    try {
+      const params = new URLSearchParams();
+      if (filtros.search) params.append('search', filtros.search);
+      if (filtros.rubro) params.append('rubro', filtros.rubro);
+      
+      const queryString = params.toString();
+      const url = queryString ? `${API_URL}/afiliados?${queryString}` : `${API_URL}/afiliados`;
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error en afiliadosService.obtenerTodos:', error);
+      throw error;
+    }
   },
 
-  getAfiliadoById: async (id) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const afiliado = afiliadosMock.find(a => a.id_afiliado === id);
-    return {
-      success: !!afiliado,
-      data: afiliado || null
-    };
+  probarConexion: async () => {
+    try {
+      const response = await fetch(`${API_URL}/afiliados/test`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error probando conexión:', error);
+      return { error: 'No se pudo conectar con el servidor' };
+    }
   },
-
-  createAfiliado: async (afiliadoData) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const newId = Math.max(...afiliadosMock.map(a => a.id_afiliado)) + 1;
-    
-    const nuevoAfiliado = {
-      id_afiliado: newId,
-      ci: afiliadoData.ci,
-      extension: afiliadoData.extension || "LP",
-      nombre: afiliadoData.nombre,
-      paterno: afiliadoData.paterno,
-      materno: afiliadoData.materno || "",
-      sexo: afiliadoData.sexo || "M",
-      fecNac: afiliadoData.fecNac || new Date().toISOString().split('T')[0],
-      telefono: afiliadoData.telefono || 0,
-      ocupacion: afiliadoData.ocupacion || "",
-      direccion: afiliadoData.direccion || "",
-      fecha_afiliacion: new Date().toISOString().split('T')[0],
-      estado: afiliadoData.estado !== undefined ? afiliadoData.estado : true,
-      patentes: afiliadoData.patentes || [],
-      puesto: afiliadoData.puesto || "Sin puesto asignado",
-      rubro: afiliadoData.rubro || ""
-    };
-    
-    afiliadosMock.push(nuevoAfiliado);
-    
-    return {
-      success: true,
-      data: nuevoAfiliado,
-      message: "Afiliado creado exitosamente"
-    };
+  // Obtener afiliado por ID
+  obtenerPorId: async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/afiliados/${id}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Afiliado no encontrado');
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Error en afiliadosService.obtenerPorId ${id}:`, error);
+      throw error;
+    }
   },
-
-  // Cambiar estado a false = desafiliar
-  cambiarEstadoAfiliado: async (idAfiliado, nuevoEstado) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
+  // Agregar esta función al service:
+crear: async (afiliadoData) => {
+  try {
+      const response = await fetch(`${API_URL}/afiliados`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(afiliadoData),
+    });
     
-    const afiliadoIndex = afiliadosMock.findIndex(a => a.id_afiliado === idAfiliado);
-    
-    if (afiliadoIndex === -1) {
-      return {
-        success: false,
-        message: "Afiliado no encontrado"
-      };
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Error ${response.status}`);
     }
     
-    // Actualizar solo el estado
-    afiliadosMock[afiliadoIndex] = {
-      ...afiliadosMock[afiliadoIndex],
-      estado: nuevoEstado
-    };
-    
-    const accion = nuevoEstado ? "afiliado" : "desafiliado";
-    
-    return {
-      success: true,
-      data: afiliadosMock[afiliadoIndex],
-      message: `Afiliado ${accion} exitosamente`
-    };
-  },
- 
-updateAfiliado: async (id, afiliadoData) => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const afiliadoIndex = afiliadosMock.findIndex(a => a.id_afiliado === id);
-  
-  if (afiliadoIndex === -1) {
-      return {
-          success: false,
-          message: "Afiliado no encontrado"
-      };
+    return await response.json();
+  } catch (error) {
+    console.error('Error en afiliadosService.crear:', error);
+    throw error;
   }
-  
-  // Actualizar afiliado
-  afiliadosMock[afiliadoIndex] = {
-      ...afiliadosMock[afiliadoIndex],
-      ...afiliadoData
-  };
-  
-  return {
-      success: true,
-      data: afiliadosMock[afiliadoIndex],
-      message: "Afiliado actualizado exitosamente"
-  };
-}
+},
 };

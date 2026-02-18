@@ -1,8 +1,16 @@
 import { Paper, Container, Title, Text, Button, Group, Stack, Box, Badge, LoadingOverlay, Alert } from '@mantine/core';
 import { useParams, useNavigate } from 'react-router-dom';
-import { IconArrowLeft, IconFileReport, IconEdit, IconPlus, IconTransfer, IconAlertCircle } from '@tabler/icons-react';
+import { IconArrowLeft, IconFileReport, IconEdit, IconPlus, IconTransfer, IconAlertCircle, IconUserOff, IconUserCheck  } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
+
 import { useAfiliado } from '../hooks/useAfiliado';
+import { useState, useCallback } from 'react';
+
+import {getPerfilUrl} from '../../../utils/imageHelper';
 import TablaPuestos from './TablaPuestos';
+import ModalAsignarPuesto from './ModalAsignarPuesto';
+import ModalDesafiliarAfiliado from './ModalDesafiliarAfiliado';
+
 
 const DetallesAfiliado = () => {
   const { id } = useParams();
@@ -10,6 +18,59 @@ const DetallesAfiliado = () => {
   
   // Usar hook para obtener datos reales del afiliado
   const { afiliado, cargando, error, cargarAfiliado } = useAfiliado(id);
+  const [modalPuestoAbierto, setModalPuestoAbierto] = useState(false);
+
+  // para refrescar los puestos
+  const [refreshPuestos, setRefreshPuestos] = useState(0);
+  const handlePuestoAsignado = useCallback(() => {
+    cargarAfiliado();
+    setRefreshPuestos(prev => prev + 1);
+    setModalPuestoAbierto(false);
+  }, [cargarAfiliado]);
+
+  const [modalDesafiliarAbierto, setModalDesafiliarAbierto] = useState(false);
+  const [cargandoDesafiliar, setCargandoDesafiliar] = useState(false);
+
+
+  const handleDesafiliar = async () => {
+    try {
+      setCargandoDesafiliar(true);
+      
+      const response = await fetch(`http://localhost:3000/api/afiliados/${id}/deshabilitar`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ es_habilitado: 0 }),
+      });
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al desafiliar');
+      }
+  
+      notifications.show({
+        title: '✅ Afiliado Desafiliado',
+        message: 'El afiliado ha sido deshabilitado y sus puestos han sido despojados',
+        color: 'green',
+        autoClose: 5000
+      });
+  
+      setModalDesafiliarAbierto(false);
+      cargarAfiliado(); // Recargar datos para reflejar el cambio
+      
+    } catch (err) {
+      notifications.show({
+        title: '❌ Error',
+        message: err.message,
+        color: 'red'
+      });
+    } finally {
+      setCargandoDesafiliar(false);
+    }
+  };
+  
 
   // Si no hay afiliado y no está cargando, mostrar mensaje
   if (!cargando && !afiliado && !error) {
@@ -124,6 +185,8 @@ const DetallesAfiliado = () => {
             
             <Button
               leftSection={<IconEdit size={18} />}
+              component="a"
+                href={`/afiliados/editar/${id}`}
               style={{
                 backgroundColor: '#0f0f0f',
                 color: 'white',
@@ -131,10 +194,44 @@ const DetallesAfiliado = () => {
                 fontWeight: 500,
                 padding: '10px 20px',
               }}
-              onClick={() => alert('Funcionalidad en desarrollo')}
+              
             >
               Editar Perfil de Afiliado
             </Button>
+            {/* Botón de desafiliar - solo mostrar si está habilitado */}
+            {afiliado?.es_habilitado === 1 && (
+              <Button
+                leftSection={<IconUserOff size={18} />}
+                onClick={() => setModalDesafiliarAbierto(true)}
+                style={{
+                  backgroundColor: '#F44336',
+                  color: 'white',
+                  borderRadius: '100px',
+                  fontWeight: 500,
+                  padding: '10px 20px',
+                  border: '2px solid #F44336'
+                }}
+              >
+                Desafiliar Afiliado
+              </Button>
+            )}
+
+            {/* Si está deshabilitado, mostrar botón para rehabilitar (opcional) */}
+            {afiliado?.es_habilitado === 0 && (
+              <Button
+                leftSection={<IconUserCheck size={18} />}
+                onClick={() => {/* implementar rehabilitación */}}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  borderRadius: '100px',
+                  fontWeight: 500,
+                  padding: '10px 20px',
+                }}
+              >
+                Rehabilitar Afiliado
+              </Button>
+            )}
           </Group>
         </Group>
 
@@ -158,9 +255,8 @@ const DetallesAfiliado = () => {
                     flexShrink: 0,
                   }}
                 >
-                  <img
-                    src={afiliado.url_perfil || '/assets/perfiles/sinPerfil.png'}
-                    alt={`Perfil de ${afiliado.nombreCompleto || afiliado.nombre}`}
+                  <img src={getPerfilUrl(afiliado)} alt="Perfil" 
+
                     style={{
                       width: '100%',
                       height: '100%',
@@ -234,7 +330,7 @@ const DetallesAfiliado = () => {
                     
                     <Box>
                       <Text fw={600} size="sm" style={{ color: '#0f0f0f', marginBottom: '2px' }}>
-                        Rubro:
+                        Ocupación:
                       </Text>
                       <Text size="sm" style={{ color: '#666' }}>
                         {afiliado.ocupacion || afiliado.rubro || 'No especificado'}
@@ -249,7 +345,7 @@ const DetallesAfiliado = () => {
                         Contacto:
                       </Text>
                       <Text size="sm" style={{ color: '#666' }}>
-                        📞 {afiliado.telefono || 'No especificado'}
+                        {afiliado.telefono || 'No especificado'}
                       </Text>
                       
                     </Stack>
@@ -265,7 +361,7 @@ const DetallesAfiliado = () => {
                     
                     <Stack gap={4}>
                       <Text fw={600} size="sm" style={{ color: '#0f0f0f' }}>
-                        Registro:
+                        Fecha Afiliacion:
                       </Text>
                       <Text size="sm" style={{ color: '#666' }}>
                         {afiliado.fecha_afiliacion ? 
@@ -310,21 +406,29 @@ const DetallesAfiliado = () => {
                 
                 {/* Botones para puestos */}
                 <Group gap="md">
-                  <Button
-                    leftSection={<IconPlus size={18} />}
-                    style={{
-                      backgroundColor: '#0f0f0f',
-                      color: 'white',
-                      borderRadius: '100px',
-                      fontWeight: 500,
-                      border: '2px solid #0f0f0f',
-                      padding: '8px 16px',
-                    }}
-                    onClick={() => alert('Funcionalidad en desarrollo')}
-                  >
-                    Añadir Puesto
-                  </Button>
-                  
+                <Button
+                  leftSection={<IconPlus size={18} />}
+                  style={{
+                    backgroundColor: '#0f0f0f',
+                    color: 'white',
+                    borderRadius: '100px',
+                    fontWeight: 500,
+                    border: '2px solid #0f0f0f',
+                    padding: '8px 16px',
+                  }}
+                  onClick={() => setModalPuestoAbierto(true)}  
+                >
+                  Añadir Puesto
+                </Button>
+                <ModalAsignarPuesto
+                  opened={modalPuestoAbierto}
+                  onClose={() => setModalPuestoAbierto(false)}
+                  idAfiliado={id}
+                  onPuestoAsignado={() => {
+                    cargarAfiliado(); // Recargar datos del afiliado
+                    setModalPuestoAbierto(false);
+                  }, handlePuestoAsignado}
+                />
                   <Button
                     leftSection={<IconTransfer size={18} />}
                     style={{
@@ -343,8 +447,17 @@ const DetallesAfiliado = () => {
               </Group>
 
               {/* Tabla de puestos */}
-              <TablaPuestos puestos={afiliado.puestos || []} />
-            </Box>
+              <TablaPuestos afiliadoId={afiliado.id} key={refreshPuestos}  />
+              </Box>
+
+              
+              <ModalDesafiliarAfiliado
+                opened={modalDesafiliarAbierto}
+                onClose={() => setModalDesafiliarAbierto(false)}
+                afiliado={afiliado}
+                onConfirmar={handleDesafiliar}
+                loading={cargandoDesafiliar}
+              />
           </>
         )}
       </Paper>

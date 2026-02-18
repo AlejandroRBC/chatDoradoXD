@@ -1,7 +1,6 @@
 import { Table, Badge, Group, ActionIcon, Text, ScrollArea } from '@mantine/core';
-import { IconEdit, IconTrash, IconEye } from '@tabler/icons-react';
+import { IconEdit, IconEye } from '@tabler/icons-react'; // 👈 Eliminado IconTrash
 import { useNavigate } from 'react-router-dom';
-
 
 const TablaAfiliados = ({ afiliados = [] }) => {
   const navigate = useNavigate();
@@ -10,7 +9,10 @@ const TablaAfiliados = ({ afiliados = [] }) => {
     navigate(`/afiliados/${id}`);
   };
 
-  // Si no hay afiliados, mostrar mensaje
+  const editarAfiliado = (id) => {
+    navigate(`/afiliados/editar/${id}`);
+  };
+
   if (afiliados.length === 0) {
     return (
       <div style={{ 
@@ -20,7 +22,7 @@ const TablaAfiliados = ({ afiliados = [] }) => {
       }}>
         <Text size="lg">No hay afiliados para mostrar</Text>
         <Text size="sm" style={{ marginTop: '10px' }}>
-          Utiliza la búsqueda o añade nuevos afiliados
+          Utiliza los filtros o añade nuevos afiliados
         </Text>
       </div>
     );
@@ -37,7 +39,7 @@ const TablaAfiliados = ({ afiliados = [] }) => {
           backgroundColor: '#f9f9f9'
         }
       }}
-      
+      onClick={() => verDetalles(afiliado.id)}
     >
       <Table.Td>
         <Text fw={500} style={{ color: '#0f0f0f' }}>
@@ -57,7 +59,7 @@ const TablaAfiliados = ({ afiliados = [] }) => {
       <Table.Td>
         <Group gap={4} wrap="wrap">
           {afiliado.patentes && afiliado.patentes.length > 0 ? (
-            afiliado.patentes.map((patente, index) => (
+            afiliado.patentes.slice(0, 2).map((patente, index) => (
               <Badge
                 key={index}
                 size="xs"
@@ -76,7 +78,23 @@ const TablaAfiliados = ({ afiliados = [] }) => {
               Sin puestos
             </Text>
           )}
+          {afiliado.patentes && afiliado.patentes.length > 2 && (
+            <Badge size="xs" color="gray">
+              +{afiliado.patentes.length - 2}
+            </Badge>
+          )}
         </Group>
+      </Table.Td>
+      
+      <Table.Td>
+        <Badge 
+          size="sm" 
+          color={afiliado.puestos_con_patente > 0 ? "green" : "yellow"}
+          variant="light"
+        >
+          {afiliado.total_puestos || 0} puestos
+          {afiliado.puestos_con_patente > 0 && ` (${afiliado.puestos_con_patente} con patente)`}
+        </Badge>
       </Table.Td>
       
       <Table.Td>
@@ -96,8 +114,10 @@ const TablaAfiliados = ({ afiliados = [] }) => {
                 backgroundColor: 'rgba(15, 15, 15, 0.1)',
               },
             }}
-            onClick={() => verDetalles(afiliado.id)}
-            
+            onClick={(e) => {
+              e.stopPropagation();
+              verDetalles(afiliado.id);
+            }}
           >
             <IconEye size={16} />
           </ActionIcon>
@@ -112,11 +132,12 @@ const TablaAfiliados = ({ afiliados = [] }) => {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              alert(`Editar afiliado ${afiliado.id} (en desarrollo)`);
+              editarAfiliado(afiliado.id);
             }}
           >
             <IconEdit size={16} />
           </ActionIcon>
+          {/* 🚫 BOTÓN ELIMINAR COMENTADO
           <ActionIcon
             variant="subtle"
             size="sm"
@@ -135,6 +156,7 @@ const TablaAfiliados = ({ afiliados = [] }) => {
           >
             <IconTrash size={16} />
           </ActionIcon>
+          */}
         </Group>
       </Table.Td>
     </Table.Tr>
@@ -151,15 +173,16 @@ const TablaAfiliados = ({ afiliados = [] }) => {
           border: '1px solid #eee',
           borderRadius: '8px',
           overflow: 'hidden',
-          minWidth: '1200px',
+          minWidth: '1300px',
         }}
       >
         <Table.Thead style={{ backgroundColor: '#f6f8fe' }}>
           <Table.Tr>
             <Table.Th>Nombre</Table.Th>
             <Table.Th>CI</Table.Th>
-            <Table.Th>Ocupacion</Table.Th>
+            <Table.Th>Ocupación</Table.Th>
             <Table.Th>Puestos</Table.Th>
+            <Table.Th># Puestos</Table.Th>
             <Table.Th>Teléfono</Table.Th>
             <Table.Th>Acciones</Table.Th>
           </Table.Tr>
